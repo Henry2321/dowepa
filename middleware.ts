@@ -35,37 +35,80 @@ function decodeBasicAuth(value: string) {
 }
 
 export function middleware(request: NextRequest) {
-  const adminUsername = process.env.ADMIN_USERNAME;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  const hostname = request.headers.get("host") ?? "";
+  const { pathname } = request.nextUrl;
 
-  if (!adminUsername || !adminPassword) {
-    return new NextResponse("Admin credentials are not configured.", {
-      status: 500,
-    });
+  // Rewrite admin subdomain to /admin path
+  if (hostname === "admin.dowepa.shop") {
+    const rewritePath = `/admin${pathname === "/" ? "" : pathname}`;
+    const url = request.nextUrl.clone();
+    url.pathname = rewritePath;
+
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      return new NextResponse("Admin credentials are not configured.", {
+        status: 500,
+      });
+    }
+
+    const authorization = request.headers.get("authorization");
+
+    if (!authorization) {
+      return unauthorizedResponse();
+    }
+
+    const credentials = decodeBasicAuth(authorization);
+
+    if (!credentials) {
+      return unauthorizedResponse();
+    }
+
+    if (
+      credentials.username !== adminUsername ||
+      credentials.password !== adminPassword
+    ) {
+      return unauthorizedResponse();
+    }
+
+    return NextResponse.rewrite(url);
   }
 
-  const authorization = request.headers.get("authorization");
+  // Protect /admin path on main domain as well
+  if (pathname.startsWith("/admin")) {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
-  if (!authorization) {
-    return unauthorizedResponse();
-  }
+    if (!adminUsername || !adminPassword) {
+      return new NextResponse("Admin credentials are not configured.", {
+        status: 500,
+      });
+    }
 
-  const credentials = decodeBasicAuth(authorization);
+    const authorization = request.headers.get("authorization");
 
-  if (!credentials) {
-    return unauthorizedResponse();
-  }
+    if (!authorization) {
+      return unauthorizedResponse();
+    }
 
-  if (
-    credentials.username !== adminUsername ||
-    credentials.password !== adminPassword
-  ) {
-    return unauthorizedResponse();
+    const credentials = decodeBasicAuth(authorization);
+
+    if (!credentials) {
+      return unauthorizedResponse();
+    }
+
+    if (
+      credentials.username !== adminUsername ||
+      credentials.password !== adminPassword
+    ) {
+      return unauthorizedResponse();
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
