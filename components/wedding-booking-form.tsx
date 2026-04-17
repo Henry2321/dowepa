@@ -191,6 +191,17 @@ function validateBookingForm(formData: BookingFormData) {
     errors.leadSource = "Please select a lead source.";
   }
 
+  const groomPhone = normalizeText(formData.groomPhone);
+  const bridePhone = normalizeText(formData.bridePhone);
+
+  if (!groomPhone) {
+    errors.groomPhone = "Please enter the groom's phone number.";
+  }
+
+  if (!bridePhone) {
+    errors.bridePhone = "Please enter the bride's phone number.";
+  }
+
   if (!emailPrimary) {
     errors.emailPrimary = "Email 1 is required.";
   } else if (!EMAIL_PATTERN.test(emailPrimary)) {
@@ -587,7 +598,7 @@ export function WeddingBookingForm() {
               </div>
 
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Groom's Phone" error={errors.groomPhone}>
+                <Field label="Groom's Phone" required error={errors.groomPhone}>
                   <input
                     className="booking-input"
                     placeholder="0900 000 000"
@@ -598,7 +609,7 @@ export function WeddingBookingForm() {
                   />
                 </Field>
 
-                <Field label="Bride's Phone" error={errors.bridePhone}>
+                <Field label="Bride's Phone" required error={errors.bridePhone}>
                   <input
                     className="booking-input"
                     placeholder="0900 000 001"

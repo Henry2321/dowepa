@@ -307,6 +307,14 @@ function validateBookingForm(formData: BookingFormData): {
     errors.leadSource = "Please select a lead source.";
   }
 
+  if (!groomPhone) {
+    errors.groomPhone = "Please enter the groom's phone number.";
+  }
+
+  if (!bridePhone) {
+    errors.bridePhone = "Please enter the bride's phone number.";
+  }
+
   if (!emailPrimary) {
     errors.emailPrimary = "Email 1 is required.";
   } else if (!EMAIL_PATTERN.test(emailPrimary)) {
@@ -662,6 +670,44 @@ export async function updateBookingStatus(
     return {
       success: false,
       message: "Unable to update status on Supabase. Please try again.",
+    };
+  }
+}
+
+export async function updateConsultationSchedule(
+  id: string,
+  consultationDate: string,
+  consultationTime: string,
+): Promise<{ success: boolean; message?: string }> {
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  const isJwtKey = serviceRoleKey.startsWith("eyJ");
+  const requestUrl = new URL("/rest/v1/wedding_bookings", url);
+
+  requestUrl.searchParams.set("id", `eq.${id}`);
+
+  try {
+    const res = await fetch(requestUrl, {
+      method: "PATCH",
+      headers: {
+        apikey: serviceRoleKey,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+        ...(isJwtKey ? { Authorization: `Bearer ${serviceRoleKey}` } : {}),
+      },
+      body: JSON.stringify({ consultation_date: consultationDate, consultation_time: consultationTime }),
+    });
+
+    if (!res.ok) {
+      const payload = await readJsonSafely<SupabaseErrorPayload>(res);
+      throw toSupabaseError(res, payload);
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unable to update schedule.",
     };
   }
 }
